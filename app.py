@@ -1,10 +1,11 @@
+```python
 ﻿import os
 import re
+import json
 from pathlib import Path
 from urllib.parse import quote
 
 from flask import Flask, abort, render_template_string, send_from_directory
-import json
 
 APP_DIR = Path(__file__).resolve().parent
 
@@ -42,7 +43,7 @@ PAGE = r"""
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LIBRAS LIBRO â€” Player</title>
+  <title>LIBRAS LIBRO — Player</title>
 
   <style>
     :root{
@@ -347,7 +348,7 @@ PAGE = r"""
       {% for t in tracks %}
         <div class="row" data-index="{{t.index}}" data-url="{{t.url}}" onclick="playFromRow(this)">
           <div class="num">{{"%02d"|format(t.index)}}</div>
-          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">â–¶</button>
+          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">▶</button>
           <div class="name" title="{{t.display}}">{{t.display}}</div>
         </div>
       {% endfor %}
@@ -375,7 +376,7 @@ PAGE = r"""
   function setNowPlaying(idx){
     const t = TRACKS.find(x => x.index === idx);
     if(!t) return;
-    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} Â· ${t.display}`;
+    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} · ${t.display}`;
   }
 
   function playIndex(idx){
@@ -484,35 +485,36 @@ WAV_EXT = ".wav"
 
 
 def find_cover_file() -> Path | None:
-  candidates = []
-  for ext in (".png", ".jpg", ".jpeg", ".webp"):
-    candidates.append(APP_DIR / f"{COVER_BASENAME}{ext}")
-    candidates.append(APP_DIR / f"{COVER_BASENAME}{ext.upper()}")
-  for p in candidates:
-    if p.exists() and p.is_file():
-      return p
-  for p in APP_DIR.iterdir():
-    if p.is_file() and p.stem == COVER_BASENAME and p.suffix.lower() in IMG_EXTS:
-      return p
-  return None
+    candidates = []
+    for ext in (".png", ".jpg", ".jpeg", ".webp"):
+        candidates.append(APP_DIR / f"{COVER_BASENAME}{ext}")
+        candidates.append(APP_DIR / f"{COVER_BASENAME}{ext.upper()}")
+    for p in candidates:
+        if p.exists() and p.is_file():
+            return p
+    for p in APP_DIR.iterdir():
+        if p.is_file() and p.stem == COVER_BASENAME and p.suffix.lower() in IMG_EXTS:
+            return p
+    return None
 
 
 _num_re = re.compile(r"^\s*(\d{1,3})\s*[-._)]*\s*(.*)$")
 
+
 def parse_track_number_and_title(filename: str):
-  """
-  Accepts:
-    '01 Yulaf.wav', '1-Yulaf.wav', '1. Yulaf.wav', '1) Yulaf.wav'
-  Falls back to no explicit number.
-  """
-  stem = Path(filename).stem  # removes .wav
-  m = _num_re.match(stem)
-  if m:
-    n = int(m.group(1))
-    title = (m.group(2) or "").strip()
-    title = title if title else stem.strip()
-    return n, title
-  return None, stem.strip()
+    """
+    Accepts:
+      '01 Yulaf.wav', '1-Yulaf.wav', '1. Yulaf.wav', '1) Yulaf.wav'
+    Falls back to no explicit number.
+    """
+    stem = Path(filename).stem  # removes .wav
+    m = _num_re.match(stem)
+    if m:
+        n = int(m.group(1))
+        title = (m.group(2) or "").strip()
+        title = title if title else stem.strip()
+        return n, title
+    return None, stem.strip()
 
 
 def list_wavs(folder: Path):
@@ -552,6 +554,8 @@ def list_wavs(folder: Path):
             next_idx += 1
 
     return tracks
+
+
 @app.route("/")
 def index():
     tracks = list_wavs(AUDIO_DIR)
@@ -564,12 +568,14 @@ def index():
         count=len(tracks),
     )
 
+
 @app.route("/audio/<path:filename>")
 def audio(filename):
     p = AUDIO_DIR / filename
     if not p.exists() or not p.is_file():
         abort(404)
     return send_from_directory(AUDIO_DIR, filename)
+
 
 @app.route("/cover")
 def cover():
@@ -578,3 +584,8 @@ def cover():
         abort(404)
     return send_from_directory(APP_DIR, p.name)
 
+
+if __name__ == "__main__":
+    # Local dev only (Render uses start.sh / gunicorn)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
+```
