@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 from pathlib import Path
 from urllib.parse import quote
@@ -13,35 +13,13 @@ COVER_BASENAME = "CRYSTOL ALBUM"  # matches "CRYSTOL ALBUM.png"
 
 app = Flask(__name__)
 
-ALBUM_ORDER = [
-    "Yulaf.wav",
-    "Orange Royal.wav",
-    "Saba Type Bitch.wav",
-    "Load.wav",
-    "Leyte Shutdown.wav",
-    "To Purok Dos.wav",
-    "Aurora Lights.wav",
-    "Ijahay.wav",
-    "Choyins.wav",
-    "Tip Education.wav",
-    "Puro Alibi.wav",
-    "Kilim Horizon.wav",
-    "Prosecco Rosé Unja Tootsie.wav",
-    "European Bugoy.wav",
-    "Keep It Bongga.wav",
-    "50K.wav",
-    "Leopard Resort.wav",
-    "Aksyonag.wav",
-    "Ako Metros Bi.wav",
-]
-
 PAGE = r"""
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LIBRAS LIBRO â€” Player</title>
+  <title>LIBRAS LIBRO — Player</title>
 
   <style>
     :root{
@@ -346,7 +324,7 @@ PAGE = r"""
       {% for t in tracks %}
         <div class="row" data-index="{{t.index}}" data-url="{{t.url}}" onclick="playFromRow(this)">
           <div class="num">{{"%02d"|format(t.index)}}</div>
-          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">â–¶</button>
+          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">▶</button>
           <div class="name" title="{{t.display}}">{{t.display}}</div>
         </div>
       {% endfor %}
@@ -374,7 +352,7 @@ PAGE = r"""
   function setNowPlaying(idx){
     const t = TRACKS.find(x => x.index === idx);
     if(!t) return;
-    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} Â· ${t.display}`;
+    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} · ${t.display}`;
   }
 
   function playIndex(idx){
@@ -515,22 +493,72 @@ def parse_track_number_and_title(filename: str):
 
 
 def list_wavs(folder: Path):
-    order_index = {name.lower(): i for i, name in enumerate(ALBUM_ORDER)}
+  files = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == WAV_EXT]
+  parsed = []
+  for p in files:
+    n, title = parse_track_number_and_title(p.name)
+    parsed.append((p, n, title))
 
-    files = [
-        p for p in folder.iterdir()
-        if p.is_file() and p.suffix.lower() == ".wav"
-    ]
+  # Sort: explicit track number first; otherwise by title
+  def sort_key(item):
+    p, n, title = item
+    has_n = 0 if n is not None else 1
+    n_val = n if n is not None else 10**9
+    return (has_n, n_val, title.lower(), p.name.lower())
 
-    files.sort(
-        key=lambda p: (
-            order_index.get(p.name.lower(), 10**9),
-            p.name.lower()
-        )
-    )
+  parsed.sort(key=sort_key)
 
-    return [
-        {"display": p.name, "url": f"/audio/{quote(p.name)}"}
-        for p in files
-    ]
+  tracks = []
+  for idx, (p, n, title) in enumerate(parsed, start=1):
+    track_index = n if n is not None else idx
+    tracks.append({
+      "index": int(track_index),
+      "display": title,
+      "url": f"/audio/{quote(p.name)}",  # handles spaces
+    })
 
+  # Ensure stable order even if some files lack numbers:
+  tracks.sort(key=lambda t: (t["index"], t["display"].lower()))
+
+  return tracks
+
+
+@app.get("/")
+def index():
+  tracks = list_wavs(AUDIO_DIR)
+  # Minimal JSON without extra deps
+  tracks_json = "[" + ",".join(
+    "{"
+    + f"\"index\":{t['index']},"
+    + f"\"display\":{_json_str(t['display'])},"
+    + f"\"url\":{_json_str(t['url'])}"
+    + "}"
+    for t in tracks
+  ) + "]"
+  return render_template_string(PAGE, tracks=tracks, count=len(tracks), tracks_json=tracks_json)
+
+
+def _json_str(s: str) -> str:
+  # simple JSON string escape
+  return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+
+
+@app.get("/cover")
+def cover():
+  cover_file = find_cover_file()
+  if not cover_file:
+    abort(404)
+  return send_from_directory(APP_DIR, cover_file.name, as_attachment=False, conditional=True)
+
+
+@app.get("/audio/<path:filename>")
+def audio(filename):
+  file_path = AUDIO_DIR / filename
+  if not file_path.exists() or not file_path.is_file() or file_path.suffix.lower() != WAV_EXT:
+    abort(404)
+  return send_from_directory(AUDIO_DIR, filename, as_attachment=False, conditional=True)
+
+
+if __name__ == "__main__":
+  port = int(os.environ.get("PORT", "8080"))
+  app.run(host="0.0.0.0", port=port)
