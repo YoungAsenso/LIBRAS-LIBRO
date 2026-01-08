@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import json
 from pathlib import Path
@@ -289,6 +289,9 @@ PAGE = r"""
       max-width: 720px;
       margin: 14px auto 0;
     }
+    body.fs-on .now{
+      display:none;
+    }
     body.fs-on .controls{
       justify-content: center;
     }
@@ -306,8 +309,8 @@ PAGE = r"""
     <div class="hero" id="hero">
       <img class="cover" id="coverImg" src="/cover" alt="CRYSTOL ALBUM cover" onerror="this.style.display='none'">
       <div class="meta">
-        <h1 class="title">LIBRAS LIBRO</h1>
-        <p class="sub">{{ count }} tracks</p>
+        <h1 class="title" id="mainTitle">LIBRAS LIBRO</h1>
+        <p class="sub" id="subtitle">{{ count }} tracks</p>
 
         <div class="controls">
           <div class="pill" id="status">Ready</div>
@@ -361,6 +364,12 @@ PAGE = r"""
   const repeatBtn = document.getElementById("repeatBtn");
   const fsBtn = document.getElementById("fsBtn");
 
+  const mainTitle = document.getElementById("mainTitle");
+  const ALBUM_TITLE = mainTitle ? mainTitle.textContent : "LIBRAS LIBRO";
+  const subtitle = document.getElementById("subtitle");
+  const SUBTITLE_DEFAULT = subtitle ? subtitle.textContent : "";
+
+
   // Playlist (album order)
   const TRACKS = {{ tracks_json | safe }};
   let currentIndex = -1;
@@ -376,6 +385,11 @@ PAGE = r"""
     const t = TRACKS.find(x => x.index === idx);
     if(!t) return;
     now.innerHTML = `Now playing: ${String(idx).padStart(2,"0")} &middot; ${t.display}`;
+
+    // In fullscreen layout mode, show track title big
+    if(document.body.classList.contains("fs-on") && mainTitle){
+      mainTitle.textContent = t.display;
+    }
   }
 
   function playIndex(idx){
@@ -436,6 +450,14 @@ PAGE = r"""
 
   async function enterFS(){
     document.body.classList.add("fs-on");
+    if(subtitle){ subtitle.textContent = "Now playing"; }
+
+    // If a track is already selected, update big title immediately
+    if(currentIndex !== -1 && mainTitle){
+      const t = TRACKS.find(x => x.index === currentIndex);
+      if(t) mainTitle.textContent = t.display;
+    }
+
     try{
       // Request true fullscreen (best effort)
       await document.documentElement.requestFullscreen();
@@ -447,6 +469,9 @@ PAGE = r"""
 
   async function exitFS(){
     document.body.classList.remove("fs-on");
+    if(mainTitle) mainTitle.textContent = ALBUM_TITLE;
+    if(subtitle){ subtitle.textContent = SUBTITLE_DEFAULT; }
+
     try{
       if(document.fullscreenElement) await document.exitFullscreen();
     }catch(e){}
@@ -587,3 +612,11 @@ def cover():
 if __name__ == "__main__":
     # Local dev only (Render uses start.sh / gunicorn)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
+
+
+
+
+
+
+
+
