@@ -41,6 +41,7 @@ PAGE = """
 
   /* Overlay text directly on image (no background fills) */
   .overlay{
+
   position:absolute;
   left:0;
   right:0;
@@ -49,6 +50,24 @@ PAGE = """
   flex-direction:column;
   align-items:center;
   gap:8px;
+  pointer-events:none;
+
+}
+
+.overlay::before{
+  content:"";
+  position:absolute;
+  left:-20px;
+  right:-20px;
+  bottom:-14px;
+  height:120px;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,0.55),
+    rgba(0,0,0,0.25),
+    rgba(0,0,0,0.0)
+  );
+  z-index:-1;
   pointer-events:none;
 }
 
@@ -84,6 +103,7 @@ PAGE = """
   overflow:hidden;
 }
     .overlay{
+
   position:absolute;
   left:0;
   right:0;
@@ -92,6 +112,24 @@ PAGE = """
   flex-direction:column;
   align-items:center;
   gap:8px;
+  pointer-events:none;
+
+}
+
+.overlay::before{
+  content:"";
+  position:absolute;
+  left:-20px;
+  right:-20px;
+  bottom:-14px;
+  height:120px;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,0.55),
+    rgba(0,0,0,0.25),
+    rgba(0,0,0,0.0)
+  );
+  z-index:-1;
   pointer-events:none;
 }
   }
@@ -145,4 +183,5 @@ def cover():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
     app.run(host="0.0.0.0", port=port)
+
 
