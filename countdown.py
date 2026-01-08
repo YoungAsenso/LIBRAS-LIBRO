@@ -40,6 +40,10 @@ try:
 except Exception as e:
     # Don't crash the whole site if DB is temporarily unavailable
     print("DB init error:", e)
+
+
+def signup_enabled():
+    return os.environ.get("SIGNUP_ENABLED", "false").lower() == "true"
 PAGE = """
 <!doctype html>
 <html>
@@ -218,12 +222,14 @@ PAGE = """
       <div class="overlay">
         <div class="nums" id="nums">--   --   --   --</div>
         <div class="labels">DAYS&nbsp;&nbsp;HOURS&nbsp;&nbsp;MINS&nbsp;&nbsp;SECS</div>
-        <form class="signup" method="POST" action="/signup" autocomplete="on">
-          <input name="username" placeholder="preferred username" required maxlength="32">
-          <input name="email" type="email" placeholder="email" required maxlength="254">
-          <button type="submit">ENTER</button>
-          <small>Only used to verify your entry & contact winners. Not used for spam.</small>
-        </form>
+        {% if signup_enabled %}
+<form class="signup" method="POST" action="/signup" autocomplete="on">
+  <input name="username" placeholder="preferred username" required maxlength="32">
+  <input name="email" type="email" placeholder="email" required maxlength="254">
+  <button type="submit">ENTER</button>
+  <small>Only used to verify your entry & contact winners. Not used for spam.</small>
+</form>
+{% endif %}
       </div>
     </div>
   </div>
@@ -256,12 +262,14 @@ PAGE = """
 def home():
     if not COVER_NAME:
         return ("Missing cover image. Add CRYSTOL ALBUM FULL.* or CRYSTOL ALBUM.* to the repo root.", 500)
-    return render_template_string(PAGE, target=TARGET_ISO)
+    return render_template_string(PAGE, target=TARGET_ISO, signup_enabled=signup_enabled())
 
 
 
 @app.route("/signup", methods=["POST"])
 def signup():
+    if not signup_enabled():
+        return ("Signups are currently closed.", 403)
     username = request.form.get("username", "").strip()
     email = request.form.get("email", "").strip().lower()
 
