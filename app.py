@@ -1,5 +1,4 @@
-```python
-ï»¿import os
+import os
 import re
 import json
 from pathlib import Path
@@ -28,7 +27,7 @@ ALBUM_ORDER = [
     "Tip Education.wav",
     "Puro Alibi.wav",
     "Kilim Horizon.wav",
-    "Prosecco RosÃ© Unja Tootsie.wav",
+    "Prosecco RosÃƒÆ’Ã‚Â© Unja Tootsie.wav",
     "European Bugoy.wav",
     "Keep It Bongga.wav",
     "50K.wav",
@@ -43,7 +42,7 @@ PAGE = r"""
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LIBRAS LIBRO â€” Player</title>
+  <title>LIBRAS LIBRO ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Player</title>
 
   <style>
     :root{
@@ -348,7 +347,7 @@ PAGE = r"""
       {% for t in tracks %}
         <div class="row" data-index="{{t.index}}" data-url="{{t.url}}" onclick="playFromRow(this)">
           <div class="num">{{"%02d"|format(t.index)}}</div>
-          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">â–¶</button>
+          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¶</button>
           <div class="name" title="{{t.display}}">{{t.display}}</div>
         </div>
       {% endfor %}
@@ -376,7 +375,7 @@ PAGE = r"""
   function setNowPlaying(idx){
     const t = TRACKS.find(x => x.index === idx);
     if(!t) return;
-    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} Â· ${t.display}`;
+    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} Ãƒâ€šÃ‚Â· ${t.display}`;
   }
 
   function playIndex(idx){
@@ -546,7 +545,7 @@ def list_wavs(folder: Path):
             "url": f"/audio/{quote(p.name)}"
         })
 
-    # If there are â€œunknownâ€ tracks, give them unique increasing numbers at the end
+    # If there are ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œunknownÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tracks, give them unique increasing numbers at the end
     next_idx = len(ALBUM_ORDER) + 1
     for t in tracks:
         if t["index"] == len(ALBUM_ORDER) + 1:
@@ -588,4 +587,3 @@ def cover():
 if __name__ == "__main__":
     # Local dev only (Render uses start.sh / gunicorn)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
-```
