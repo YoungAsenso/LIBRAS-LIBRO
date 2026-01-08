@@ -1,12 +1,13 @@
 import os
+import re
 from pathlib import Path
 from urllib.parse import quote
 
-from flask import Flask, abort, render_template_string, send_from_directory, request
+from flask import Flask, abort, render_template_string, send_from_directory
 
 APP_DIR = Path(__file__).resolve().parent
 
-# Your repo layout: WAVs + cover in the repo root
+# Repo layout: WAVs + cover in the repo root
 AUDIO_DIR = APP_DIR
 COVER_BASENAME = "CRYSTOL ALBUM"  # matches "CRYSTOL ALBUM.png"
 
@@ -22,30 +23,24 @@ PAGE = r"""
 
   <style>
     :root{
-      /* cover-inspired palette (deep reds + warm orange highlights) */
       --bg: #070505;
       --panel: rgba(255,255,255,.04);
-      --panel2: rgba(255,255,255,.06);
       --stroke: rgba(255,255,255,.10);
       --text: rgba(255,255,255,.92);
       --muted: rgba(255,255,255,.62);
-
       --hot: #ff4a2d;
       --hot2: #ff7a2a;
-      --danger: #b31212;
-      --glow: rgba(255, 92, 40, .35);
-
       --radius: 18px;
     }
-
-    * { box-sizing: border-box; }
+    *{ box-sizing:border-box; }
 
     body{
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 600px at 50% -10%, rgba(255,80,40,.22), transparent 55%),
-                  radial-gradient(900px 500px at 20% 10%, rgba(179,18,18,.18), transparent 55%),
-                  var(--bg);
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, rgba(255,80,40,.22), transparent 55%),
+        radial-gradient(900px 500px at 20% 10%, rgba(179,18,18,.18), transparent 55%),
+        var(--bg);
       color: var(--text);
     }
 
@@ -56,44 +51,44 @@ PAGE = r"""
     }
 
     .hero{
-      display: grid;
+      display:grid;
       grid-template-columns: 260px 1fr;
       gap: 18px;
-      align-items: end;
+      align-items:end;
       padding: 18px;
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
       border: 1px solid var(--stroke);
       border-radius: var(--radius);
       box-shadow: 0 20px 70px rgba(0,0,0,.45);
-      position: relative;
-      overflow: hidden;
+      position:relative;
+      overflow:hidden;
     }
-
     .hero:before{
       content:"";
       position:absolute;
       inset:-40px;
-      background: radial-gradient(600px 220px at 10% 10%, rgba(255,122,42,.20), transparent 60%),
-                  radial-gradient(520px 240px at 90% 20%, rgba(179,18,18,.16), transparent 60%);
+      background:
+        radial-gradient(600px 220px at 10% 10%, rgba(255,122,42,.20), transparent 60%),
+        radial-gradient(520px 240px at 90% 20%, rgba(179,18,18,.16), transparent 60%);
       filter: blur(10px);
       pointer-events:none;
     }
 
     .cover{
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      border-radius: 16px;
-      border: 1px solid var(--stroke);
+      width:100%;
+      aspect-ratio:1/1;
+      border-radius:16px;
+      border:1px solid var(--stroke);
       background: rgba(255,255,255,.03);
       box-shadow: 0 18px 50px rgba(0,0,0,.55);
-      object-fit: cover;
-      position: relative;
-      z-index: 1;
+      object-fit:cover;
+      position:relative;
+      z-index:1;
     }
 
     .meta{
-      position: relative;
-      z-index: 1;
+      position:relative;
+      z-index:1;
       padding-bottom: 6px;
     }
 
@@ -111,23 +106,11 @@ PAGE = r"""
     }
 
     .controls{
-      display: flex;
+      display:flex;
       gap: 10px;
-      align-items: center;
+      align-items:center;
       flex-wrap: wrap;
     }
-
-    input#filter{
-      flex: 1;
-      min-width: 240px;
-      padding: 12px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--stroke);
-      background: rgba(0,0,0,.35);
-      color: var(--text);
-      outline: none;
-    }
-    input#filter::placeholder{ color: rgba(255,255,255,.40); }
 
     .pill{
       padding: 10px 12px;
@@ -139,6 +122,61 @@ PAGE = r"""
       white-space: nowrap;
     }
 
+    .iconbtn{
+      width: 44px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: transform .08s ease, border-color .15s ease, background .15s ease;
+      user-select:none;
+    }
+    .iconbtn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(255,122,42,.40);
+      background: rgba(255,122,42,.10);
+      box-shadow: 0 0 0 6px rgba(255,122,42,.08);
+    }
+    .iconbtn:active{ transform: translateY(0px); }
+    .iconbtn.on{
+      border-color: rgba(255,122,42,.55);
+      background: rgba(255,122,42,.14);
+      box-shadow: 0 0 0 6px rgba(255,122,42,.06);
+    }
+    .iconbtn svg{ width: 18px; height: 18px; opacity: .92; }
+
+    .playerbar{
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+      position: relative;
+    }
+
+    .playerrow{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      margin-bottom: 10px;
+    }
+
+    audio{
+      width: 100%;
+      filter: drop-shadow(0 10px 30px rgba(0,0,0,.55));
+    }
+
+    .now{
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,.65);
+    }
+
     .list{
       margin-top: 16px;
       border-radius: var(--radius);
@@ -148,23 +186,29 @@ PAGE = r"""
     }
 
     .row{
-      display: grid;
-      grid-template-columns: 64px 1fr 90px;
+      display:grid;
+      grid-template-columns: 56px 64px 1fr;
       gap: 12px;
-      align-items: center;
+      align-items:center;
       padding: 12px 14px;
       border-bottom: 1px solid rgba(255,255,255,.06);
       background: rgba(0,0,0,.14);
-      transition: transform .08s ease, background .15s ease;
+      transition: background .15s ease;
+      cursor: pointer;
     }
-    .row:last-child{ border-bottom: none; }
-    .row:hover{
-      background: rgba(255,255,255,.04);
-    }
+    .row:last-child{ border-bottom:none; }
+    .row:hover{ background: rgba(255,255,255,.04); }
 
     .row.playing{
       background: linear-gradient(90deg, rgba(255,74,45,.20), rgba(255,122,42,.08));
       box-shadow: inset 0 0 0 1px rgba(255,122,42,.25);
+    }
+
+    .num{
+      color: rgba(255,255,255,.45);
+      font-size: 12px;
+      letter-spacing: .2px;
+      text-align: left;
     }
 
     .btn{
@@ -188,65 +232,88 @@ PAGE = r"""
     .btn:active{ transform: translateY(0px); }
 
     .name{
-      overflow: hidden;
+      overflow:hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 14px;
     }
 
-    .tag{
-      justify-self: end;
-      font-size: 12px;
-      color: rgba(255,255,255,.55);
-      border: 1px solid rgba(255,255,255,.10);
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.20);
+    /* Fullscreen listening view */
+    body.fs-on{
+      background: radial-gradient(1200px 800px at 50% 10%, rgba(255,80,40,.18), transparent 60%), var(--bg);
     }
-
-    .playerbar{
-      margin-top: 14px;
-      padding: 14px;
-      border-radius: var(--radius);
-      border: 1px solid var(--stroke);
-      background: rgba(0,0,0,.25);
-      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    body.fs-on .wrap{
+      max-width: 1100px;
+      padding: 18px 18px 28px;
     }
-
-    audio{
-      width: 100%;
-      filter: drop-shadow(0 10px 30px rgba(0,0,0,.55));
+    body.fs-on .list{
+      display:none;
     }
-
-    .now{
-      margin-top: 8px;
-      font-size: 12px;
-      color: rgba(255,255,255,.65);
+    body.fs-on .hero{
+      grid-template-columns: 1fr;
+      align-items:center;
+      text-align:center;
+      padding: 22px 18px;
+    }
+    body.fs-on .cover{
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    body.fs-on .meta{
+      padding-top: 12px;
+    }
+    body.fs-on .playerbar{
+      max-width: 720px;
+      margin: 14px auto 0;
+    }
+    body.fs-on .controls{
+      justify-content: center;
     }
 
     @media (max-width: 760px){
       .hero{ grid-template-columns: 1fr; }
       .title{ font-size: 34px; }
-      .row{ grid-template-columns: 64px 1fr; }
-      .tag{ display: none; }
+      .row{ grid-template-columns: 46px 64px 1fr; }
     }
   </style>
 </head>
 
 <body>
   <div class="wrap">
-    <div class="hero">
-      <img class="cover" src="/cover" alt="CRYSTOL ALBUM cover" onerror="this.style.display='none'">
+    <div class="hero" id="hero">
+      <img class="cover" id="coverImg" src="/cover" alt="CRYSTOL ALBUM cover" onerror="this.style.display='none'">
       <div class="meta">
         <h1 class="title">LIBRAS LIBRO</h1>
-        <p class="sub">{{ count }} tracks · streamed from Render</p>
+        <p class="sub">{{ count }} tracks</p>
 
         <div class="controls">
-          <input id="filter" placeholder="Filter tracks…" oninput="filterList()">
           <div class="pill" id="status">Ready</div>
+
+          <!-- Repeat One -->
+          <button class="iconbtn" id="repeatBtn" title="Repeat one">
+            <!-- repeat-1 icon -->
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 7h9a4 4 0 0 1 4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M17 3l-2 2 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M17 17H8a4 4 0 0 1-4-4v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M7 21l2-2-2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 10v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M12 10h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+
+          <!-- Fullscreen -->
+          <button class="iconbtn" id="fsBtn" title="Full screen">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 3h3a2 2 0 0 1 2 2v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 21H5a2 2 0 0 1-2-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 21h3a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
 
-        <div class="playerbar">
+        <div class="playerbar" id="playerbar">
           <audio id="player" controls preload="none"></audio>
           <div class="now" id="now"></div>
         </div>
@@ -255,10 +322,10 @@ PAGE = r"""
 
     <div class="list" id="list">
       {% for t in tracks %}
-        <div class="row" data-name="{{t.display|lower}}" data-url="{{t.url}}" onclick="playFromRow(this)">
-          <button class="btn" onclick="event.stopPropagation(); play('{{t.url}}','{{t.display|e}}', this.closest('.row'))">▶</button>
+        <div class="row" data-index="{{t.index}}" data-url="{{t.url}}" onclick="playFromRow(this)">
+          <div class="num">{{"%02d"|format(t.index)}}</div>
+          <button class="btn" onclick="event.stopPropagation(); playIndex({{t.index}});">▶</button>
           <div class="name" title="{{t.display}}">{{t.display}}</div>
-          <div class="tag">WAV</div>
         </div>
       {% endfor %}
     </div>
@@ -268,57 +335,132 @@ PAGE = r"""
   const player = document.getElementById("player");
   const now = document.getElementById("now");
   const statusPill = document.getElementById("status");
+  const repeatBtn = document.getElementById("repeatBtn");
+  const fsBtn = document.getElementById("fsBtn");
 
+  // Playlist (album order)
+  const TRACKS = {{ tracks_json | safe }};
+  let currentIndex = -1;
   let currentRow = null;
 
-  function setPlayingRow(row){
+  function setPlayingRowByIndex(idx){
     if(currentRow) currentRow.classList.remove("playing");
-    currentRow = row;
+    currentRow = document.querySelector(`.row[data-index="${idx}"]`);
     if(currentRow) currentRow.classList.add("playing");
   }
 
-  function play(url, name, row=null){
-    player.src = url;
+  function setNowPlaying(idx){
+    const t = TRACKS.find(x => x.index === idx);
+    if(!t) return;
+    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} · ${t.display}`;
+  }
+
+  function playIndex(idx){
+    const t = TRACKS.find(x => x.index === idx);
+    if(!t) return;
+
+    currentIndex = idx;
+    player.src = t.url;
     player.play();
-    now.textContent = "Now playing: " + name;
     statusPill.textContent = "Playing";
-    setPlayingRow(row);
+    setPlayingRowByIndex(idx);
+    setNowPlaying(idx);
+    // Repeat-one state should persist across tracks
+    // (player.loop already reflects it)
   }
 
   function playFromRow(row){
-    const url = row.getAttribute("data-url");
-    const name = row.querySelector(".name")?.textContent || "Track";
-    play(url, name, row);
+    const idx = parseInt(row.getAttribute("data-index"), 10);
+    playIndex(idx);
   }
 
-  function filterList(){
-    const q = document.getElementById("filter").value.trim().toLowerCase();
-    document.querySelectorAll("#list .row").forEach(r => {
-      const n = r.getAttribute("data-name") || "";
-      r.style.display = n.includes(q) ? "" : "none";
-    });
+  // Repeat one (single-track loop)
+  function setRepeatOne(on){
+    player.loop = !!on;
+    repeatBtn.classList.toggle("on", !!on);
+    repeatBtn.setAttribute("aria-pressed", on ? "true" : "false");
   }
+  repeatBtn.addEventListener("click", () => {
+    setRepeatOne(!player.loop);
+    statusPill.textContent = player.paused ? "Ready" : (player.loop ? "Repeat" : "Playing");
+  });
+  setRepeatOne(false);
+
+  // Autoplay next (album order), unless repeat-one is on (player.loop handles it)
+  player.addEventListener("ended", () => {
+    if(player.loop) return; // repeat-one will restart automatically
+    const next = currentIndex + 1;
+    const exists = TRACKS.some(t => t.index === next);
+    if(exists){
+      playIndex(next);
+    }else{
+      statusPill.textContent = "Ended";
+    }
+  });
 
   player.addEventListener("pause", () => {
     if(player.currentTime > 0 && !player.ended) statusPill.textContent = "Paused";
   });
+  player.addEventListener("play", () => {
+    statusPill.textContent = player.loop ? "Repeat" : "Playing";
+  });
+  player.addEventListener("error", () => { statusPill.textContent = "Error"; });
 
-  player.addEventListener("ended", () => {
-    statusPill.textContent = "Ended";
-    // optional: auto-clear highlight
-    // setPlayingRow(null);
+  // Full screen listening mode (true fullscreen when supported)
+  function fsActive(){
+    return !!document.fullscreenElement || document.body.classList.contains("fs-on");
+  }
+
+  async function enterFS(){
+    document.body.classList.add("fs-on");
+    try{
+      // Request true fullscreen (best effort)
+      await document.documentElement.requestFullscreen();
+    }catch(e){
+      // If browser blocks it, we still keep the "fs-on" layout
+    }
+    fsBtn.classList.add("on");
+  }
+
+  async function exitFS(){
+    document.body.classList.remove("fs-on");
+    try{
+      if(document.fullscreenElement) await document.exitFullscreen();
+    }catch(e){}
+    fsBtn.classList.remove("on");
+  }
+
+  fsBtn.addEventListener("click", async () => {
+    if(fsActive()) await exitFS();
+    else await enterFS();
   });
 
-  player.addEventListener("error", () => {
-    statusPill.textContent = "Error";
+  // Keep UI in sync if user exits fullscreen via ESC
+  document.addEventListener("fullscreenchange", () => {
+    const on = !!document.fullscreenElement;
+    // If fullscreen exits, also exit our layout mode
+    if(!on){
+      document.body.classList.remove("fs-on");
+      fsBtn.classList.remove("on");
+    }else{
+      document.body.classList.add("fs-on");
+      fsBtn.classList.add("on");
+    }
   });
+
+  // Optional: start with first track loaded (not playing)
+  // Uncomment if you want pre-selected track 01 without autoplay.
+  // if(TRACKS.length){ currentIndex = TRACKS[0].index; player.src = TRACKS[0].url; setPlayingRowByIndex(currentIndex); setNowPlaying(currentIndex); }
 </script>
 </body>
 </html>
 """
 
+IMG_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+WAV_EXT = ".wav"
+
+
 def find_cover_file() -> Path | None:
-  # Try common extensions with and without exact match
   candidates = []
   for ext in (".png", ".jpg", ".jpeg", ".webp"):
     candidates.append(APP_DIR / f"{COVER_BASENAME}{ext}")
@@ -326,26 +468,80 @@ def find_cover_file() -> Path | None:
   for p in candidates:
     if p.exists() and p.is_file():
       return p
-  # Fallback: any file that starts with COVER_BASENAME and is an image
   for p in APP_DIR.iterdir():
-    if p.is_file() and p.stem == COVER_BASENAME and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+    if p.is_file() and p.stem == COVER_BASENAME and p.suffix.lower() in IMG_EXTS:
       return p
   return None
 
+
+_num_re = re.compile(r"^\s*(\d{1,3})\s*[-._)]*\s*(.*)$")
+
+def parse_track_number_and_title(filename: str):
+  """
+  Accepts:
+    '01 Yulaf.wav', '1-Yulaf.wav', '1. Yulaf.wav', '1) Yulaf.wav'
+  Falls back to no explicit number.
+  """
+  stem = Path(filename).stem  # removes .wav
+  m = _num_re.match(stem)
+  if m:
+    n = int(m.group(1))
+    title = (m.group(2) or "").strip()
+    title = title if title else stem.strip()
+    return n, title
+  return None, stem.strip()
+
+
 def list_wavs(folder: Path):
-  files = sorted([p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".wav"])
-  tracks = []
+  files = [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == WAV_EXT]
+  parsed = []
   for p in files:
+    n, title = parse_track_number_and_title(p.name)
+    parsed.append((p, n, title))
+
+  # Sort: explicit track number first; otherwise by title
+  def sort_key(item):
+    p, n, title = item
+    has_n = 0 if n is not None else 1
+    n_val = n if n is not None else 10**9
+    return (has_n, n_val, title.lower(), p.name.lower())
+
+  parsed.sort(key=sort_key)
+
+  tracks = []
+  for idx, (p, n, title) in enumerate(parsed, start=1):
+    track_index = n if n is not None else idx
     tracks.append({
-      "display": p.name,
-      "url": f"/audio/{quote(p.name)}"  # handles spaces
+      "index": int(track_index),
+      "display": title,
+      "url": f"/audio/{quote(p.name)}",  # handles spaces
     })
+
+  # Ensure stable order even if some files lack numbers:
+  tracks.sort(key=lambda t: (t["index"], t["display"].lower()))
+
   return tracks
+
 
 @app.get("/")
 def index():
   tracks = list_wavs(AUDIO_DIR)
-  return render_template_string(PAGE, tracks=tracks, count=len(tracks))
+  # Minimal JSON without extra deps
+  tracks_json = "[" + ",".join(
+    "{"
+    + f"\"index\":{t['index']},"
+    + f"\"display\":{_json_str(t['display'])},"
+    + f"\"url\":{_json_str(t['url'])}"
+    + "}"
+    for t in tracks
+  ) + "]"
+  return render_template_string(PAGE, tracks=tracks, count=len(tracks), tracks_json=tracks_json)
+
+
+def _json_str(s: str) -> str:
+  # simple JSON string escape
+  return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+
 
 @app.get("/cover")
 def cover():
@@ -354,12 +550,14 @@ def cover():
     abort(404)
   return send_from_directory(APP_DIR, cover_file.name, as_attachment=False, conditional=True)
 
+
 @app.get("/audio/<path:filename>")
 def audio(filename):
   file_path = AUDIO_DIR / filename
-  if not file_path.exists() or not file_path.is_file() or file_path.suffix.lower() != ".wav":
+  if not file_path.exists() or not file_path.is_file() or file_path.suffix.lower() != WAV_EXT:
     abort(404)
   return send_from_directory(AUDIO_DIR, filename, as_attachment=False, conditional=True)
+
 
 if __name__ == "__main__":
   port = int(os.environ.get("PORT", "8080"))
