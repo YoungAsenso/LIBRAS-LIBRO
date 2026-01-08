@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from flask import Flask, abort, render_template_string, send_from_directory
+import json
 
 APP_DIR = Path(__file__).resolve().parent
 
@@ -515,22 +516,65 @@ def parse_track_number_and_title(filename: str):
 
 
 def list_wavs(folder: Path):
-    order_index = {name.lower(): i for i, name in enumerate(ALBUM_ORDER)}
+    # Map filename -> track number (1-based), based on ALBUM_ORDER
+    order_num = {name.lower(): i + 1 for i, name in enumerate(ALBUM_ORDER)}
 
     files = [
         p for p in folder.iterdir()
         if p.is_file() and p.suffix.lower() == ".wav"
     ]
 
+    # Sort:
+    # 1) by ALBUM_ORDER track number (unknown ones go last)
+    # 2) then by filename
     files.sort(
         key=lambda p: (
-            order_index.get(p.name.lower(), 10**9),
+            order_num.get(p.name.lower(), 10**9),
             p.name.lower()
         )
     )
 
-    return [
-        {"display": p.name, "url": f"/audio/{quote(p.name)}"}
-        for p in files
-    ]
+    tracks = []
+    for p in files:
+        idx = order_num.get(p.name.lower())
+        display = Path(p.name).stem  # removes ".wav" in the UI
+        tracks.append({
+            "index": idx if idx is not None else (len(ALBUM_ORDER) + 1),
+            "display": display,
+            "url": f"/audio/{quote(p.name)}"
+        })
+
+    # If there are “unknown” tracks, give them unique increasing numbers at the end
+    next_idx = len(ALBUM_ORDER) + 1
+    for t in tracks:
+        if t["index"] == len(ALBUM_ORDER) + 1:
+            t["index"] = next_idx
+            next_idx += 1
+
+    return tracks
+@app.route("/")
+def index():
+    tracks = list_wavs(AUDIO_DIR)
+    tracks_json = json.dumps(tracks, ensure_ascii=False)
+
+    return render_template_string(
+        PAGE,
+        tracks=tracks,
+        tracks_json=tracks_json,
+        count=len(tracks),
+    )
+
+@app.route("/audio/<path:filename>")
+def audio(filename):
+    p = AUDIO_DIR / filename
+    if not p.exists() or not p.is_file():
+        abort(404)
+    return send_from_directory(AUDIO_DIR, filename)
+
+@app.route("/cover")
+def cover():
+    p = find_cover_file()
+    if not p:
+        abort(404)
+    return send_from_directory(APP_DIR, p.name)
 
