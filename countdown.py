@@ -20,42 +20,37 @@ PAGE = """
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>LIBRAS LIBRO Countdown</title>
 <style>
-  html, body { height:100%; margin:0; background:#000; }
+  html, body { height:100%; margin:0; background:#000; overflow:hidden; }
   .wrap{
-    min-height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:18px;
-    box-sizing:border-box;
-  }
+  position:fixed;
+  inset:0;
+}
 
   /* 1536x1024 = 3:2 so we lock aspect ratio */
   .card{
-    width:min(1100px, 96vw);
-    aspect-ratio: 3 / 2;
-    position:relative;
-    overflow:hidden;
-    border-radius:16px;
-    background:#000;
-    box-shadow: 0 18px 60px rgba(0,0,0,.55);
-  }
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+}
 
   .bg{
-    position:absolute; inset:0;
-    background: url("/cover") center/cover no-repeat;
-  }
+  position:absolute;
+  inset:0;
+  background: url("/cover") center/cover no-repeat;
+}
 
   /* Overlay text directly on image (no background fills) */
   .overlay{
-    position:absolute;
-    left:0; right:0; bottom:22px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:8px;
-    pointer-events:none;
-  }
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:32px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  pointer-events:none;
+}
 
   .nums{
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -79,9 +74,26 @@ PAGE = """
 
   /* Make it feel bigger on short screens */
   @media (max-height: 700px){
-    .wrap{ padding:10px; }
-    .card{ width:min(980px, 98vw); }
-    .overlay{ bottom:14px; }
+    .wrap{
+  position:fixed;
+  inset:0;
+}
+    .card{
+  position:fixed;
+  inset:0;
+  overflow:hidden;
+}
+    .overlay{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:32px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  pointer-events:none;
+}
   }
 </style>
 </head>
@@ -133,3 +145,4 @@ def cover():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
     app.run(host="0.0.0.0", port=port)
+
