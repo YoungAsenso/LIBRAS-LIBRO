@@ -375,7 +375,7 @@ PAGE = r"""
   function setNowPlaying(idx){
     const t = TRACKS.find(x => x.index === idx);
     if(!t) return;
-    now.textContent = `Now playing: ${String(idx).padStart(2,"0")} &#183; ${t.display}`;
+    now.innerHTML = `Now playing: ${String(idx).padStart(2,"0")} &middot; ${t.display}`;
   }
 
   function playIndex(idx){
