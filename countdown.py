@@ -11,6 +11,7 @@ COVER_NAME = COVER_PATH.name if COVER_PATH else None
 TARGET_ISO = "2026-02-13T00:00:00"
 
 app = Flask(__name__)
+@app.route("/")
 def home():
     if not COVER_NAME:
         return ("Missing cover image. Add CRYSTOL ALBUM FULL.* or CRYSTOL ALBUM.* to the repo root.", 500)
