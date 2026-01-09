@@ -221,16 +221,17 @@ PAGE = """
       <div class="bg"></div>
       <div class="overlay">
 {% if signup_enabled %}
+        <form class="signup" method="POST" action="/signup" autocomplete="on">
+          <input name="username" placeholder="preferred username" required maxlength="32">
+          <input name="email" type="email" placeholder="email" required maxlength="254">
+          <button type="submit">ENTER</button>
+          <small>Only used to verify your entry & contact winners. Not used for spam.</small>
+        </form>
 {% else %}
-        {% if signup_enabled %}
-<form class="signup" method="POST" action="/signup" autocomplete="on">
-  <input name="username" placeholder="preferred username" required maxlength="32">
-  <input name="email" type="email" placeholder="email" required maxlength="254">
-  <button type="submit">ENTER</button>
-  <small>Only used to verify your entry & contact winners. Not used for spam.</small>
-</form>
-{% else %}
-<div class="nums" id="nums">--   --   --   --</div>
+        <div class="nums" id="nums">--   --   --   --</div>
+        <div class="labels">DAYS&nbsp;&nbsp;HOURS&nbsp;&nbsp;MINS&nbsp;&nbsp;SECS</div>
+{% endif %}
+      </div>
 <div class="labels">DAYS&nbsp;&nbsp;HOURS&nbsp;&nbsp;MINS&nbsp;&nbsp;SECS</div>
 {% endif %}
 {% endif %}
@@ -242,7 +243,7 @@ PAGE = """
 
 <script>
   const TARGET = new Date("{{ target }}");
-  const el = document.getElementById("nums"); if(!el) { /* signup mode */ }
+  const el = document.getElementById("nums"); if(!el) return; if(!el) { /* signup mode */ }
   const pad2 = n => String(n).padStart(2,"0");
 
   function tick(){ if(!el) return;
