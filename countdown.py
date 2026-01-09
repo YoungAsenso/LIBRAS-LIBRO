@@ -222,8 +222,17 @@ PAGE = """
       <div class="overlay">
 {% if signup_enabled %}
 {% else %}
-        <div class="nums" id="nums">--   --   --   --</div>
-        <div class="labels">DAYS&nbsp;&nbsp;HOURS&nbsp;&nbsp;MINS&nbsp;&nbsp;SECS</div>
+        {% if signup_enabled %}
+<form class="signup" method="POST" action="/signup" autocomplete="on">
+  <input name="username" placeholder="preferred username" required maxlength="32">
+  <input name="email" type="email" placeholder="email" required maxlength="254">
+  <button type="submit">ENTER</button>
+  <small>Only used to verify your entry & contact winners. Not used for spam.</small>
+</form>
+{% else %}
+<div class="nums" id="nums">--   --   --   --</div>
+<div class="labels">DAYS&nbsp;&nbsp;HOURS&nbsp;&nbsp;MINS&nbsp;&nbsp;SECS</div>
+{% endif %}
 {% endif %}
         {% if signup_enabled %}
 {% endif %}
